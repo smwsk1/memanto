@@ -8,6 +8,18 @@ This directory contains a real-world example of **LangGraph** agents using **Mem
 
 ![LangGraph + Memanto: Persistent Multi-Agent Memory](https://github.com/moorcheh-ai/memanto/raw/main/assets/langgraph-architecture.png)
 
+## 30-Second Demo
+
+![LangGraph + Memanto Demo](demo.gif)
+
+This animation shows the complete cross-session memory flow:
+1. Researcher Agent stores findings via `memanto_remember()`
+2. Session ends (new session starts)
+3. Writer Agent retrieves memories via `memanto_recall()`
+4. Cross-session persistence confirmed!
+
+
+
 ## What This Demonstrates
 
 - **Cross-agent memory sharing**: A Research Agent stores findings that a Writer Agent retrieves
