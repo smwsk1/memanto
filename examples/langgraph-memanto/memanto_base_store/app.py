@@ -128,9 +128,9 @@ def _load(_graph_version: str = ""):
     cache so edits to graph.py take effect on the next Streamlit rerun
     without a manual server restart.
     """
-    from graph import build_support_graph
-    from memanto_setup import MemantoSetup
-    from memanto_store import MemantoStore
+    from memanto_base_store.graph import build_support_graph
+    from memanto_base_store.memanto_setup import MemantoSetup
+    from memanto_base_store.memanto_store import MemantoStore
 
     api_key = os.environ.get("MOORCHEH_API_KEY", "")
     client = MemantoSetup(api_key).setup(

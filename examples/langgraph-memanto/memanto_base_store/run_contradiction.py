@@ -17,8 +17,8 @@ from datetime import datetime
 
 from dotenv import load_dotenv
 
-from memanto_setup import MemantoSetup
-from memanto_store import MemantoStore
+from memanto_base_store.memanto_setup import MemantoSetup
+from memanto_base_store.memanto_store import MemantoStore
 
 AGENT_ID = "langgraph-contradiction-demo"
 USER_ID = "alice"

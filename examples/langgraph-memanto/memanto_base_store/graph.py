@@ -40,8 +40,8 @@ from langgraph.store.base import BaseStore
 
 from memanto.cli.client.sdk_client import SdkClient
 
-from memanto_store import MemantoStore
-from state import SupportState
+from memanto_base_store.memanto_store import MemantoStore
+from memanto_base_store.state import SupportState
 
 logger = logging.getLogger(__name__)
 
@@ -278,18 +278,18 @@ def _make_llm(temperature: float = 0.2, max_tokens: int | None = None) -> ChatOp
     # Free, no credits required. Subject to OpenRouter's shared free-tier
     # rate limits; the graph's RetryPolicy handles 429s with 32s backoff.
     # See .env.example for paid alternatives (tencent/hy3-preview etc).
-    model = os.environ.get("LANGGRAPH_LLM", "openai/gpt-oss-120b:free")
-    api_key = os.environ.get("OPENROUTER_API_KEY")
+    model = os.environ.get("LLM_MODEL", os.environ.get("LANGGRAPH_LLM", "gpt-4o-mini"))
+    api_key = os.environ.get("OPENAI_API_KEY") or os.environ.get("OPENROUTER_API_KEY")
     if not api_key:
         raise RuntimeError(
-            "OPENROUTER_API_KEY is not set. Copy .env.example to .env and add "
-            "your OpenRouter key (https://openrouter.ai/keys - free tier available)."
+            "OPENAI_API_KEY or OPENROUTER_API_KEY is not set. Copy .env.example to .env and add "
+            "your API key."
         )
     kwargs: dict = {
         "model": model,
         "temperature": temperature,
         "api_key": api_key,
-        "base_url": "https://openrouter.ai/api/v1",
+        "base_url": os.environ.get("OPENAI_API_BASE", "https://openrouter.ai/api/v1" if os.environ.get("OPENROUTER_API_KEY") else None) or None,
     }
     if max_tokens is not None:
         kwargs["max_tokens"] = max_tokens

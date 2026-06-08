@@ -85,8 +85,8 @@ class MemantoStore(BaseStore):
 
     Example::
 
-        from memanto_setup import MemantoSetup
-        from memanto_store import MemantoStore
+        from memanto_base_store.memanto_setup import MemantoSetup
+        from memanto_base_store.memanto_store import MemantoStore
 
         client = MemantoSetup(api_key).setup(agent_id="my-app")
         store = MemantoStore(client, agent_id="my-app")
