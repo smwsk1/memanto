@@ -11,6 +11,7 @@ import sys
 import threading
 import time
 from datetime import datetime
+from pathlib import Path
 
 import httpx
 import typer
@@ -151,7 +152,25 @@ def _onprem_setup() -> None:
 
     _ensure_docker_available()
     _ensure_moorcheh_client_installed()
-    embedding_provider, embedding_model, embedding_key = _prompt_embedding_provider()
+
+    # Embedding model is a one-time choice (set on first on-prem onboarding).
+    # On subsequent runs — e.g., switching cloud→on-prem after having previously
+    # onboarded on-prem — reuse what state.json already has and recover the
+    # api_key from ~/.moorcheh/config.json. Skipping this would force the user
+    # to re-pick the same provider/model on every backend swap.
+    existing_state = config_manager.get_onprem_state()
+    if existing_state.get("embedding_provider") and existing_state.get(
+        "embedding_model"
+    ):
+        embedding_provider = existing_state["embedding_provider"]
+        embedding_model = existing_state["embedding_model"]
+        embedding_key = _recover_moorcheh_api_key("embedding", embedding_provider)
+        console.print(
+            f"[dim]  Reusing embedding from previous on-prem setup: "
+            f"{embedding_provider} / {embedding_model}[/dim]"
+        )
+    else:
+        embedding_provider, embedding_model, embedding_key = _prompt_embedding_provider()
     llm_provider, llm_model, llm_key = _prompt_llm_provider(
         embedding_provider, embedding_key
     )
@@ -343,6 +362,30 @@ def _prompt_llm_provider(
         f"[dim]  Ollama LLM model {model} will be pulled into the container.[/dim]"
     )
     return "ollama", model, ""
+
+
+def _recover_moorcheh_api_key(section: str, provider: str) -> str:
+    """Read an api_key out of ``~/.moorcheh/config.json`` for re-onboarding.
+
+    ``section`` is ``"embedding"`` or ``"llm"``. Returns ``""`` for providers
+    that don't need a key (ollama) or when the file/key is missing — callers
+    must handle that (typically by failing fast at ``moorcheh up`` if a paid
+    provider needs a key we couldn't recover).
+    """
+    if provider == "ollama":
+        return ""
+    import json as _json
+
+    cfg = Path.home() / ".moorcheh" / "config.json"
+    if not cfg.exists():
+        return ""
+    try:
+        data = _json.loads(cfg.read_text())
+    except Exception:
+        return ""
+    block = data.get(section) or {}
+    key = block.get("api_key") or ""
+    return key if isinstance(key, str) else ""
 
 
 def _persist_moorcheh_llm_config(
