@@ -30,6 +30,31 @@ _config_manager = ConfigManager()
 STATIC_DIR = Path(__file__).parent.parent / "static"
 
 
+def _build_ui_direct_client() -> DirectClient | None:
+    """Build a ``DirectClient`` for UI routes with the active session restored.
+
+    On on-prem we pass an ``"on-prem"`` placeholder — the underlying
+    ``OnPremClient`` ignores it and talks to the local stack. On cloud we
+    require a real Memanto API key; returns ``None`` when one isn't
+    configured so callers can choose their own error shape (HTTP 400 vs
+    graceful empty payload).
+    """
+    if _config_manager.get_backend() == Backend.ON_PREM:
+        api_key: str = "on-prem"
+    else:
+        cfg_key = _config_manager.get_api_key()
+        if not cfg_key:
+            return None
+        api_key = cfg_key
+    client = DirectClient(api_key)
+    active_agent_id, token = _config_manager.get_active_session()
+    if token:
+        client.session_token = token
+    if active_agent_id:
+        client.agent_id = active_agent_id
+    return client
+
+
 @router.get("/api/ui/config")
 async def get_ui_config():
     """
@@ -348,13 +373,9 @@ async def list_conflicts(agent_id: str | None = None, date: str | None = None):
         date = dt.now().strftime("%Y-%m-%d")
 
     try:
-        api_key = _config_manager.get_api_key()
-        if not api_key:
+        client = _build_ui_direct_client()
+        if client is None:
             return {"conflicts": [], "count": 0, "message": "No API key configured"}
-        client = DirectClient(api_key)
-        _, token = _config_manager.get_active_session()
-        if token:
-            client.session_token = token
         conflicts = client.list_conflicts(agent_id=agent_id, date=date)
         return {
             "conflicts": conflicts,
@@ -476,15 +497,11 @@ async def generate_daily_summary(body: dict | None = None):
     date = body.get("date") or dt.now().strftime("%Y-%m-%d")
     output_path = body.get("output_path")
 
-    api_key = _config_manager.get_api_key()
-    if not api_key:
+    client = _build_ui_direct_client()
+    if client is None:
         raise HTTPException(status_code=400, detail="No API key configured")
 
     try:
-        client = DirectClient(api_key)
-        _, token = _config_manager.get_active_session()
-        if token:
-            client.session_token = token
         result = client.generate_daily_summary(
             agent_id=str(agent_id), date=str(date), output_path=output_path
         )
@@ -511,15 +528,11 @@ async def generate_conflict_report(body: dict | None = None):
         agent_id = aid
     date = body.get("date") or dt.now().strftime("%Y-%m-%d")
 
-    api_key = _config_manager.get_api_key()
-    if not api_key:
+    client = _build_ui_direct_client()
+    if client is None:
         raise HTTPException(status_code=400, detail="No API key configured")
 
     try:
-        client = DirectClient(api_key)
-        _, token = _config_manager.get_active_session()
-        if token:
-            client.session_token = token
         result = client.generate_conflict_report(agent_id=str(agent_id), date=str(date))
         return {"agent_id": agent_id, "date": date, **result}
     except Exception as e:
@@ -550,13 +563,9 @@ async def resolve_conflict(body: dict):
         )
 
     try:
-        api_key = _config_manager.get_api_key()
-        if not api_key:
+        client = _build_ui_direct_client()
+        if client is None:
             raise HTTPException(status_code=400, detail="No API key configured")
-        client = DirectClient(api_key)
-        _, token = _config_manager.get_active_session()
-        if token:
-            client.session_token = token
         result = client.resolve_conflict(
             agent_id=agent_id,
             date=date,
@@ -965,20 +974,13 @@ async def migrate_import(body: dict):
             detail="No --agent supplied and no active agent. Activate an agent first.",
         )
 
-    api_key = _config_manager.get_api_key()
-    if not api_key:
+    client = _build_ui_direct_client()
+    if client is None:
         raise HTTPException(status_code=400, detail="No Memanto API key configured.")
 
     source_label, export = _migrate_load_or_export(
         provider, body.get("file"), body.get("api_key")
     )
-
-    client = DirectClient(api_key)
-    active_agent_id, token = _config_manager.get_active_session()
-    if token:
-        client.session_token = token
-    if active_agent_id:
-        client.agent_id = active_agent_id
 
     started = time.perf_counter()
     try:

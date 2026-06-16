@@ -4430,9 +4430,9 @@
                 </button>
             `).join('');
 
-            const noAgent = !S.agentId;
-            const agentBanner = noAgent
-                ? `<div class="mig-error-banner" style="margin-bottom:18px">No active agent. <a href="#" onclick="goToPage('agents');return false" style="color:inherit;text-decoration:underline">Activate one</a> before importing.</div>`
+            const noActiveSession = !S.agentId || !S.token;
+            const agentBanner = noActiveSession
+                ? `<div class="mig-error-banner" style="margin-bottom:18px">No active agent/session. <a href="#" onclick="goToPage('agents');return false" style="color:inherit;text-decoration:underline">Activate one</a> before importing.</div>`
                 : '';
 
             const sourceForm = st.provider ? renderMigrateSource(st) : '';
@@ -4470,16 +4470,16 @@
                     ${fileActive
                     ? `<div>
                             <label style="display:block;font-size:12px;color:var(--text-dim);margin-bottom:6px">Server-side path to a JSON export file</label>
-                            <input id="migFile" placeholder="e.g. C:/Users/you/Downloads/mem0_export.json" value="${escHtml(st.file || '')}" style="width:100%;font-family:var(--font-mono);font-size:12px">
+                            <input id="migFile" placeholder="e.g. C:/Users/you/Downloads/mem0_export.json" value="${escHtml(st.file || '')}" oninput="invalidateMigratePreview()" style="width:100%;font-family:var(--font-mono);font-size:12px">
                         </div>`
                     : `<div>
                             <label style="display:block;font-size:12px;color:var(--text-dim);margin-bottom:6px">${escHtml(p.label)} API key  ·  <a href="${p.docs}" target="_blank" style="color:var(--accent);text-decoration:none">get one</a></label>
-                            <input id="migApiKey" type="password" placeholder="${st.provider === 'mem0' ? 'm0_...' : st.provider === 'letta' ? 'sk-let-...' : 'sm_...'}" value="${escHtml(st.apiKey || '')}" style="width:100%;font-family:var(--font-mono);font-size:12px">
+                            <input id="migApiKey" type="password" placeholder="${st.provider === 'mem0' ? 'm0_...' : st.provider === 'letta' ? 'sk-let-...' : 'sm_...'}" value="${escHtml(st.apiKey || '')}" oninput="invalidateMigratePreview()" style="width:100%;font-family:var(--font-mono);font-size:12px">
                             <div style="font-size:11px;color:var(--text-dim);margin-top:6px">Used once for this export — not saved to disk.</div>
                         </div>`}
                     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:18px">
                         <button class="btn btn-secondary" onclick="runMigratePreview()">Preview (dry run)</button>
-                        <button class="btn btn-primary" onclick="runMigrateImport()" ${S.agentId ? '' : 'disabled style="opacity:0.5;cursor:not-allowed"'}>Import now</button>
+                        <button class="btn btn-primary" onclick="runMigrateImport()" ${(S.agentId && S.token) ? '' : 'disabled style="opacity:0.5;cursor:not-allowed"'}>Import now</button>
                     </div>
                 </div>
             `;
@@ -4490,7 +4490,21 @@
             // doesn't lose what they typed when switching tabs.
             captureMigrateInputs();
             S.migrate.source = kind;
+            // Switching source mode invalidates any prior preview — the
+            // stats would describe a different body than the import sends.
+            S.migrate.preview = null;
             renderMigrate();
+        }
+
+        function invalidateMigratePreview() {
+            // Drop a stale preview as soon as the user edits the source — the
+            // preview's stats would no longer describe the body the import
+            // would send. We hide the preview card directly rather than
+            // calling renderMigrate(), which would steal input focus.
+            if (!S.migrate.preview) return;
+            S.migrate.preview = null;
+            const preview = document.querySelector('#migrateContent .card:last-child');
+            if (preview && preview.querySelector('.mig-stats')) preview.remove();
         }
 
         function captureMigrateInputs() {
@@ -4572,7 +4586,7 @@
         }
 
         async function runMigrateImport() {
-            if (!S.agentId) { toast('Activate an agent first', 'error'); return; }
+            if (!S.agentId || !S.token) { toast('Activate an agent/session first', 'error'); return; }
             const body = migrateBody();
             if (!body) return;
             const ok = await confirmDialog({
@@ -4598,6 +4612,9 @@
             }
 
             S.migrate.lastResult = res;
+            // Drop the live API key from page state once import is done — it's
+            // no longer needed and shouldn't linger in memory.
+            S.migrate.apiKey = '';
             renderMigrateResult(res);
             postMigrateRefresh();
             toast(`Imported ${res.summary.imported} memories from ${body.provider}`, 'success');
@@ -4656,7 +4673,7 @@
                         <div class="mig-stat"><div class="label">Failed</div><div class="value ${sum.failed ? 'error' : ''}">${sum.failed || 0}</div></div>
                         <div class="mig-stat"><div class="label">Skipped</div><div class="value warning">${sum.skipped || 0}</div><div class="sub">empty content</div></div>
                         <div class="mig-stat"><div class="label">Batches</div><div class="value">${sum.batches || 0}</div><div class="sub">100 / req</div></div>
-                        <div class="mig-stat"><div class="label">Tokens saved</div><div class="value">${(sv.tokens_saved || 0).toLocaleString()}</div><div class="sub">~$${(sv.extraction_cost_usd || 0).toFixed ? sv.extraction_cost_usd.toFixed(2) : sv.extraction_cost_usd}</div></div>
+                        <div class="mig-stat"><div class="label">Tokens saved</div><div class="value">${(sv.tokens_saved || 0).toLocaleString()}</div><div class="sub">~$${Number(sv.extraction_cost_usd || 0).toFixed(2)}</div></div>
                         <div class="mig-stat"><div class="label">Latency</div><div class="value accent">${sv.read_ms_memanto || '—'} ms</div><div class="sub">~${sv.latency_speedup_x || '—'}× faster than ${sv.read_ms_source || '—'}ms</div></div>
                     </div>
                     <div class="mig-type-chips">${chips}</div>
