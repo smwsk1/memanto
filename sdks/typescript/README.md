@@ -67,7 +67,7 @@ When `close()` is called (or the Node process exits), the server is sent `SIGTER
 | `port` | `number` | auto | Bind the spawned server to this port. |
 | `host` | `string` | `127.0.0.1` | Bind host. |
 | `uvxPath` | `string` | `uvx` | Override the path to `uvx`. |
-| `packageSpec` | `string` | `memanto` | Package spec passed to `uvx`. Use `memanto==0.2.2` to pin. |
+| `packageSpec` | `string` | `memanto` | Package spec passed to `uvx`. Use `memanto==0.2.3` to pin. |
 | `healthTimeoutMs` | `number` | `60000` | Health-check timeout. |
 | `verbose` | `boolean` | `false` | Stream server logs to the parent process. |
 
