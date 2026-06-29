@@ -3013,7 +3013,7 @@
             ],
             "title": "Source"
           },
-          "scope_type": {
+          "agent_id": {
             "anyOf": [
               {
                 "type": "string"
@@ -3022,18 +3022,7 @@
                 "type": "null"
               }
             ],
-            "title": "Scope Type"
-          },
-          "scope_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Scope Id"
+            "title": "Agent Id"
           },
           "score": {
             "anyOf": [
@@ -3050,49 +3039,6 @@
             "type": "string",
             "title": "Provenance",
             "default": "explicit_statement"
-          },
-          "validation_count": {
-            "type": "integer",
-            "title": "Validation Count",
-            "default": 0
-          },
-          "contradiction_detected": {
-            "type": "boolean",
-            "title": "Contradiction Detected",
-            "default": false
-          },
-          "superseded_by": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Superseded By"
-          },
-          "supersedes": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Supersedes"
-          },
-          "validated_at": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Validated At"
           },
           "change_type": {
             "anyOf": [

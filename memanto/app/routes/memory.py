@@ -194,8 +194,7 @@ async def remember(
             type=cast(MemoryType, request.type),
             title=resolved_title,
             content=request.content,
-            scope_type="agent",
-            scope_id=agent_id,
+            agent_id=agent_id,
             actor_id=agent_id,
             confidence=request.confidence,
             tags=request.tags or [],
@@ -215,10 +214,6 @@ async def remember(
             memory_record=memory,
         )
 
-        # skip trust_score() computation
-        ## Compute trust score for response
-        # trust_score = memory.trust_score()
-
         return {
             "memory_id": result["id"],
             "agent_id": agent_id,
@@ -229,8 +224,6 @@ async def remember(
             "confidence": request.confidence,
             # Resolved memory type (auto-parsed when not explicitly provided)
             "type": result.get("type"),
-            # "computed_confidence": trust_score["computed_confidence"],
-            # "trust_level": trust_score["trust_level"]
         }
 
     except Exception as e:
@@ -280,8 +273,7 @@ async def batch_remember(
                 type=cast(MemoryType, item.type),
                 title=title,
                 content=item.content,
-                scope_type="agent",
-                scope_id=agent_id,
+                agent_id=agent_id,
                 actor_id=agent_id,
                 confidence=item.confidence,
                 tags=item.tags or [],
@@ -459,8 +451,7 @@ async def extract_memories_from_conversation(
                 type=cast(MemoryType, item.get("type")),
                 title=item["title"],
                 content=item["content"],
-                scope_type="agent",
-                scope_id=agent_id,
+                agent_id=agent_id,
                 actor_id=agent_id,
                 confidence=item["confidence"],
                 tags=["conversation-extract"],
@@ -690,8 +681,7 @@ async def recall(
         result = await asyncio.to_thread(
             read_service.search_memories,
             query=request.query,
-            scope_type="agent",
-            scope_id=agent_id,
+            agent_id=agent_id,
             type=request.type,
             min_similarity_score=min_similarity,
             limit=limit,
