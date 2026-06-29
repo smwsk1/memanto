@@ -255,6 +255,18 @@ class MemoryWriteService:
                 else existing_memory_data
             )
 
+            # The namespace (memanto_agent_{agent_id}) is authoritative for the
+            # agent_id; fall back to it when stored metadata predates the flat
+            # agent_id field so the rewritten record keeps correct metadata.
+            agent_id = metadata.get("agent_id")
+            if not agent_id and namespace.startswith("memanto_agent_"):
+                agent_id = namespace.removeprefix("memanto_agent_")
+            if not agent_id:
+                raise MemoryError(
+                    f"Cannot determine agent_id for memory {memory_id} "
+                    f"in namespace {namespace}"
+                )
+
             # Build updated memory record
             updated_memory = MemoryRecord(
                 id=memory_id,  # Keep same ID
@@ -263,7 +275,7 @@ class MemoryWriteService:
                     "title", existing_memory_data.get("title", "Updated Memory")
                 ),
                 content=updates.get("content", existing_memory_data.get("content", "")),
-                agent_id=metadata.get("agent_id", "unknown"),
+                agent_id=agent_id,
                 actor_id=updates.get("actor_id", metadata.get("actor_id", "unknown")),
                 source=updates.get("source", metadata.get("source", "system")),
                 source_ref=updates.get("source_ref", metadata.get("source_ref")),
