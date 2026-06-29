@@ -4455,7 +4455,13 @@
             textarea.style.minHeight = '60px';
             formGroup.append(manualLabel, textarea);
             const submitBtn = conflictActionBtn('Submit Manual Resolution', 'btn-primary', () => {
-                resolveConflict(i, rawAgentId, rawDate, 'manual', textarea.value);
+                const content = textarea.value.trim();
+                if (!content) {
+                    toast('Enter manual replacement content before submitting.', 'warning');
+                    textarea.focus();
+                    return;
+                }
+                resolveConflict(i, rawAgentId, rawDate, 'manual', content);
             });
             manual.append(formGroup, submitBtn);
 
