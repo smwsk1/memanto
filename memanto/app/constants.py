@@ -18,7 +18,9 @@ MemoryType = Literal[
 ]
 
 # Scope Types
-ScopeType = Literal["user", "workspace", "agent", "session", "project", "task"]
+# Only the "agent" scope is used by the live app; every memory namespace is
+# memanto_agent_{agent_id}. The broader multi-scope abstraction was removed.
+ScopeType = Literal["agent"]
 
 # Source Types
 SourceType = str  # e.g., "user", "agent", "tool", "system", or specific "agent_name"
@@ -71,7 +73,7 @@ VALID_PROVENANCE_TYPES = {
     "imported",
 }
 
-VALID_SCOPE_TYPES = {"user", "workspace", "agent", "session", "project", "task"}
+VALID_SCOPE_TYPES = {"agent"}
 
 ALLOWED_UPDATE_FIELDS = {
     "title",

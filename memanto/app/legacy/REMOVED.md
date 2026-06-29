@@ -72,6 +72,37 @@ Pre-existing dead files already in this folder (untouched): `context.py`,
 
 ---
 
+## 3. Multi-scope / namespace cleanup (2026-06-29)
+
+The live app only ever uses `scope_type="agent"` — every memory namespace is
+`memanto_agent_{agent_id}`. The broader multi-scope abstraction
+(`user`/`workspace`/`session`/`project`/`task`) was exercised only by dead code.
+
+**`ScopeType` narrowed to `Literal["agent"]`** in `constants.py` (and
+`VALID_SCOPE_TYPES = {"agent"}`). The agent-only scope resolution in
+`memory_read_service.generate_answer()` / `_get_search_namespaces()` was
+simplified accordingly (they always build an `agent` scope now).
+
+**Removed dead namespace machinery:**
+- `routes/namespaces.py` → moved to `legacy/namespaces.py`. Its router was
+  **never mounted** in `main.py` (only `health`, `sessions`→`memory`, and the
+  Web UI are mounted) — the whole file was unreachable.
+- `models/__init__.py`: removed `NamespaceCreateRequest`, `NamespaceResponse`,
+  `NamespaceListResponse` (imported only by the dead route).
+- `NamespaceService`: removed `create_namespace()`, `delete_namespace()`,
+  `namespace_exists()` (used only by the dead route + the dead
+  `_ensure_namespace`). Kept `list_namespaces()` — the live search path uses it.
+- `MemoryWriteService`: removed the uncalled `_ensure_namespace()` and its
+  lazy `namespace_service` property.
+- `MemoryReadService.search_multi_scope()`: removed. Called only from the dead
+  `legacy/memory.py`, and it had a broken `from memanto.memanto.app.constants`
+  import (double `memanto`) proving it never ran.
+
+`scope_type` / `scope_id` themselves remain — they are load-bearing (every
+namespace is derived from them via `MemoryScope.to_namespace()`).
+
+---
+
 ## Verification (post-cleanup)
 
 - `pytest tests/` → **191 passed**

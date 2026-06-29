@@ -152,85 +152,6 @@ class MemoryReadService:
         except Exception as e:
             raise MemoryError(f"Failed to search memories: {e}")
 
-    def search_multi_scope(
-        self,
-        query: str,
-        scopes: list[dict[str, str]],
-        type: list[str] | None = None,
-        tags: list[str] | None = None,
-        min_confidence: float | None = None,
-        status_filter: list[str] | None = None,
-        limit: int = 10,
-        min_similarity_score: float | None = None,
-        metadata_filters: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
-        """
-        Search across multiple scopes simultaneously
-
-        Leverages Moorcheh's multi-namespace search capability
-        with optional threshold filtering via kiosk_mode
-        """
-        try:
-            # Build namespaces from scopes
-            namespaces = []
-            from typing import cast
-
-            from memanto.memanto.app.constants import ScopeType
-
-            for scope_def in scopes:
-                scope = create_memory_scope(
-                    scope_type=cast(ScopeType, scope_def["scope_type"]),
-                    scope_id=scope_def["scope_id"],
-                )
-                namespaces.append(scope.to_namespace())
-
-            if not namespaces:
-                return {"results": [], "total_found": 0, "execution_time": 0}
-
-            # Build enhanced query with filters
-            enhanced_query = self._build_filtered_query(
-                query=query,
-                type=type,
-                tags=tags,
-                min_confidence=min_confidence,
-                status_filter=status_filter,
-                metadata_filters=metadata_filters,
-            )
-
-            # Build query parameters
-            top_k = limit
-
-            # Perform cross-namespace search. Same kiosk_mode caveat as
-            # search_memories: min_similarity=0.0 means "no filter".
-            use_kiosk = (
-                min_similarity_score is not None and 0 < min_similarity_score <= 1
-            )
-            search_result = self.client.similarity_search.query(
-                query=enhanced_query,
-                namespaces=namespaces,
-                top_k=top_k,
-                threshold=min_similarity_score if use_kiosk else None,
-                kiosk_mode=use_kiosk,
-            )
-
-            # Format results
-            formatted_results = [
-                self._format_memory_item(item)
-                for item in search_result.get("results", [])
-            ]
-
-            return {
-                "results": formatted_results,
-                "total_found": len(formatted_results),
-                "query": query,
-                "enhanced_query": enhanced_query,
-                "searched_namespaces": namespaces,
-                "execution_time": search_result.get("execution_time", 0),
-            }
-
-        except Exception as e:
-            raise MemoryError(f"Failed to search across multiple scopes: {e}")
-
     def search_as_of(
         self,
         as_of_date: str,
@@ -633,18 +554,7 @@ class MemoryReadService:
         try:
             # Determine namespace for answer generation
             if scope_type and scope_id:
-                from typing import cast
-
-                from memanto.app.constants import ScopeType
-
-                scope_type_resolved = (
-                    scope_type
-                    if scope_type in {"user", "workspace", "agent", "session"}
-                    else "agent"
-                )
-                scope = create_memory_scope(
-                    cast(ScopeType, scope_type_resolved), scope_id
-                )
+                scope = create_memory_scope("agent", scope_id)
                 namespace = scope.to_namespace()
             else:
                 # Use first available namespace
@@ -677,16 +587,9 @@ class MemoryReadService:
         """Get namespaces to search based on filters"""
         from typing import cast
 
-        from memanto.app.constants import ScopeType
-
         if scope_type and scope_id:
             # Search specific scope
-            scope_type_resolved = (
-                scope_type
-                if scope_type in {"user", "workspace", "agent", "session"}
-                else "agent"
-            )
-            scope = create_memory_scope(cast(ScopeType, scope_type_resolved), scope_id)
+            scope = create_memory_scope("agent", scope_id)
             return [cast(str, scope.to_namespace())]
         else:
             # Search all namespaces

@@ -211,11 +211,6 @@ class MemoryAnswerRequest(BaseModel):
     scope_id: str | None = None
 
 
-class NamespaceCreateRequest(BaseModel):
-    scope_type: ScopeType
-    scope_id: str
-
-
 class ContextSummarizationRequest(BaseModel):
     """Request to summarize context in a scope"""
 
@@ -321,20 +316,6 @@ class MemoryAnswerResponse(BaseModel):
     sources: list[str]
     confidence: float
     namespace: str
-
-
-class NamespaceResponse(BaseModel):
-    """Response returned after creating or fetching a namespace."""
-
-    namespace: str
-    scope_type: ScopeType
-    scope_id: str
-    created: bool
-
-
-class NamespaceListResponse(BaseModel):
-    namespaces: list[str]
-    total: int
 
 
 class SummarizationResponse(BaseModel):

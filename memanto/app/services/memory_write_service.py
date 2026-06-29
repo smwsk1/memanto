@@ -21,18 +21,7 @@ class MemoryWriteService:
         """Initialize the service with a Moorcheh client."""
 
         self.client = moorcheh_client
-        self._namespace_service = None
         self._parser = MemoryParsingService()
-
-    @property
-    def namespace_service(self):
-        """Lazily create the namespace service used for memory scopes."""
-
-        if self._namespace_service is None:
-            from memanto.app.services.namespace_service import NamespaceService
-
-            self._namespace_service = NamespaceService(self.client)
-        return self._namespace_service
 
     def store_memory(
         self, memory: MemoryRecord, context: dict[str, Any] | None = None
@@ -364,12 +353,3 @@ class MemoryWriteService:
 
         except Exception as e:
             raise MemoryError(f"Failed to delete memory: {e}")
-
-    def _ensure_namespace(self, memory: MemoryRecord) -> str:
-        """Ensure namespace exists for memory"""
-        from typing import cast
-
-        namespace = self.namespace_service.create_namespace(
-            cast(Any, memory.scope_type), memory.scope_id
-        )
-        return cast(str, namespace)
