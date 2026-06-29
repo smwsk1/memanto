@@ -165,6 +165,26 @@ def test_do_put_success(mock_sdk_client):
     )
 
 
+def test_do_put_stringifies_non_string_content(mock_sdk_client):
+    store = MemantoStore(api_key="test_key")
+    client_instance = MagicMock()
+    mock_sdk_client.return_value = client_instance
+
+    op = PutOp(namespace=("my_ns",), key="answer", value={"content": 42})
+    store._do_put(op)
+
+    client_instance.remember.assert_called_once_with(
+        agent_id="langgraph_my_ns",
+        memory_type=None,
+        title="42",
+        content="42",
+        confidence=0.8,
+        tags=["lg:key:answer"],
+        source="langgraph-store",
+        provenance="explicit_statement",
+    )
+
+
 def test_do_put_delete_not_supported(mock_sdk_client):
     store = MemantoStore(api_key="test_key")
     op = PutOp(namespace=("my_ns",), key="my_key", value=None)
