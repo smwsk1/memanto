@@ -29,6 +29,49 @@ def _normalize_duplicated_api_key(key: str) -> str:
     return key
 
 
+def is_valid_schedule_time(value: str) -> bool:
+    """Return whether value is a 24-hour HH:MM schedule time."""
+    try:
+        hour_str, minute_str = value.split(":", 1)
+        if len(hour_str) != 2 or len(minute_str) != 2:
+            return False
+        hour = int(hour_str)
+        minute = int(minute_str)
+    except (AttributeError, ValueError):
+        return False
+    return 0 <= hour <= 23 and 0 <= minute <= 59
+
+
+def parse_recall_limit(value: object) -> int:
+    """Parse and validate recall result limits."""
+    if isinstance(value, bool):
+        raise ValueError("recall limit must be an integer between 1 and 100")
+    try:
+        limit = int(value)
+    except (TypeError, ValueError):
+        raise ValueError("recall limit must be an integer between 1 and 100") from None
+    if isinstance(value, float) and not value.is_integer():
+        raise ValueError("recall limit must be an integer between 1 and 100")
+    if not 1 <= limit <= 100:
+        raise ValueError("recall limit must be an integer between 1 and 100")
+    return limit
+
+
+def parse_session_duration_hours(value: object) -> int:
+    """Parse and validate positive session duration hours."""
+    if isinstance(value, bool):
+        raise ValueError("default_duration_hours must be a positive integer")
+    try:
+        duration = int(value)
+    except (TypeError, ValueError):
+        raise ValueError("default_duration_hours must be a positive integer") from None
+    if isinstance(value, float) and not value.is_integer():
+        raise ValueError("default_duration_hours must be a positive integer")
+    if duration < 1:
+        raise ValueError("default_duration_hours must be a positive integer")
+    return duration
+
+
 class ConfigManager:
     """Manages MEMANTO CLI configuration.
 
@@ -376,7 +419,7 @@ class ConfigManager:
         data = self.load_yaml()
         recall = data.setdefault("recall", {})
         if limit is not None:
-            recall["limit"] = limit
+            recall["limit"] = parse_recall_limit(limit)
         if min_similarity is not None:
             if (
                 not isinstance(min_similarity, (int, float))
@@ -391,12 +434,14 @@ class ConfigManager:
     def get_schedule_time(self) -> str:
         """Get daily summary + conflict time (HH:MM format)."""
         value = self.load_yaml().get("schedule_time")
-        if isinstance(value, str) and value:
+        if isinstance(value, str) and is_valid_schedule_time(value):
             return value
         return "23:55"
 
     def set_schedule_time(self, time_str: str) -> None:
         """Set daily summary + conflict time."""
+        if not is_valid_schedule_time(time_str):
+            raise ValueError("schedule_time must be in 24-hour HH:MM format")
         self.set("schedule_time", time_str)
 
     # Active session tracking — sourced from SessionService (~/.memanto/sessions/).
