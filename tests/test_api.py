@@ -1304,6 +1304,41 @@ class TestCWE200ApiKeyLeak:
         assert data["has_active_session"] is True
 
     @pytest.mark.asyncio
+    async def test_config_endpoint_rejects_invalid_schedule_time(
+        self, client, _mock_ui_config_manager
+    ):
+        """UI config must reject invalid nightly schedule times before saving."""
+        resp = await client.patch("/api/ui/config", json={"schedule_time": "99:99"})
+
+        assert resp.status_code == 400
+        assert "schedule_time" in resp.json()["detail"]
+        _mock_ui_config_manager.set_schedule_time.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_config_update_rejects_invalid_recall_limit(
+        self, client, _mock_ui_config_manager
+    ):
+        """UI config must reject non-positive recall limits before saving."""
+        resp = await client.patch("/api/ui/config", json={"recall": {"limit": 0}})
+
+        assert resp.status_code == 400
+        assert "limit" in resp.json()["detail"]
+        _mock_ui_config_manager.set_recall_config.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_config_update_rejects_invalid_session_duration(
+        self, client, _mock_ui_config_manager
+    ):
+        """UI config must reject non-positive session durations before saving."""
+        resp = await client.patch(
+            "/api/ui/config", json={"session": {"default_duration_hours": 0}}
+        )
+
+        assert resp.status_code == 400
+        assert "default_duration_hours" in resp.json()["detail"]
+        _mock_ui_config_manager.save_yaml.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_traversal_filename_is_sanitized(
         self, client, auth_headers, mock_moorcheh
     ):
