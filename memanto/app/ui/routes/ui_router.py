@@ -17,7 +17,12 @@ from fastapi.staticfiles import StaticFiles
 from memanto.app.clients.backend import Backend
 from memanto.app.config import settings
 from memanto.cli.client.direct_client import DirectClient
-from memanto.cli.config.manager import ConfigManager
+from memanto.cli.config.manager import (
+    ConfigManager,
+    is_valid_schedule_time,
+    parse_recall_limit,
+    parse_session_duration_hours,
+)
 from memanto.cli.connect.agent_registry import AGENT_REGISTRY, list_agents
 from memanto.cli.connect.engine import install_agent, remove_agent
 
@@ -122,13 +127,26 @@ async def update_ui_config(updates: dict):
         )
 
     if "schedule_time" in updates:
+        if not is_valid_schedule_time(updates["schedule_time"]):
+            raise HTTPException(
+                status_code=400,
+                detail="schedule_time must be in 24-hour HH:MM format",
+            )
         _config_manager.set_schedule_time(updates["schedule_time"])
 
     if "session" in updates and isinstance(updates["session"], dict):
+        session_updates = dict(updates["session"])
+        if "default_duration_hours" in session_updates:
+            try:
+                session_updates["default_duration_hours"] = parse_session_duration_hours(
+                    session_updates["default_duration_hours"]
+                )
+            except ValueError as e:
+                raise HTTPException(status_code=400, detail=str(e)) from e
         data = _config_manager.load_yaml()
         if "session" not in data:
             data["session"] = {}
-        data["session"].update(updates["session"])
+        data["session"].update(session_updates)
         _config_manager.save_yaml(data)
 
     if "cli" in updates and isinstance(updates["cli"], dict):
@@ -166,8 +184,12 @@ async def update_ui_config(updates: dict):
 
     if "recall" in updates and isinstance(updates["recall"], dict):
         rec = updates["recall"]
+        try:
+            limit = parse_recall_limit(rec["limit"]) if "limit" in rec else None
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
         _config_manager.set_recall_config(
-            limit=int(rec["limit"]) if "limit" in rec else None,
+            limit=limit,
             min_similarity=float(rec["min_similarity"])
             if "min_similarity" in rec and rec["min_similarity"] is not None
             else None,
