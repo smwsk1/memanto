@@ -97,8 +97,18 @@ def _quote_markdown_block(value: Any) -> list[str]:
 
 def _inline_code(value: Any) -> str:
     text = _one_line(value)
-    escaped = text.replace("`", "\\`")
-    return f"`{escaped}`"
+    max_run = 0
+    run = 0
+    for ch in text:
+        if ch == "`":
+            run += 1
+            max_run = max(max_run, run)
+        else:
+            run = 0
+    fence = "`" * (max_run + 1)
+    if text.startswith("`") or text.endswith("`"):
+        text = f" {text} "
+    return f"{fence}{text}{fence}"
 
 
 class MemoryExportService:
