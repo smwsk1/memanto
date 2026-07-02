@@ -287,6 +287,46 @@ class TestMemoryWriteServiceDelete:
         client.documents.delete.return_value = response
         assert MemoryWriteService(client).delete_memory("m1", "ns") is expected
 
+    def test_update_memory_accepts_onprem_delete_response_shape(self):
+        from memanto.app.services.memory_write_service import MemoryWriteService
+
+        client = MagicMock()
+        client.documents.get.return_value = {
+            "items": [
+                {
+                    "id": "m1",
+                    "text": "[FACT] Original title\n\nOriginal content",
+                    "memory_type": "fact",
+                    "agent_id": "agent-a",
+                    "actor_id": "user-a",
+                    "source": "conversation",
+                    "confidence": 0.8,
+                    "status": "active",
+                    "created_at": "2026-07-01T12:00:00",
+                }
+            ]
+        }
+        client.documents.delete.return_value = {
+            "status": "success",
+            "deleted_ids": ["m1"],
+        }
+        client.documents.upload.return_value = {"status": "success"}
+
+        result = MemoryWriteService(client).update_memory(
+            "m1",
+            "memanto_agent_agent-a",
+            {"content": "Updated content"},
+        )
+
+        assert result["status"] == "success"
+        assert result["action"] == "updated"
+        client.documents.upload.assert_called_once()
+        upload_kwargs = client.documents.upload.call_args.kwargs
+        assert upload_kwargs["namespace_name"] == "memanto_agent_agent-a"
+        uploaded_doc = upload_kwargs["documents"][0]
+        assert uploaded_doc["id"] == "m1"
+        assert "Updated content" in uploaded_doc["text"]
+
 
 class TestForgetEndToEnd:
     """End-to-end ``forget`` flow through ``DirectClient``: create agent →
