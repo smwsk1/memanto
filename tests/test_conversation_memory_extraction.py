@@ -95,3 +95,24 @@ def test_extract_requires_messages():
 
     with pytest.raises(ValueError, match="at least one message"):
         service.extract(namespace="memanto_agent_test", messages=[])
+
+
+def test_extract_truncates_overlong_first_message_instead_of_dropping_query():
+    client = FakeClient(
+        '[{"type": "fact", "title": "Long note", "content": "The user shared a long deployment note.", "confidence": 0.8}]'
+    )
+    service = ConversationMemoryExtractionService(client)
+
+    service.extract(
+        namespace="memanto_agent_test",
+        messages=[
+            {
+                "role": "user",
+                "content": "Deployment note: " + ("A" * service.MAX_CONTENT_CHARS),
+            }
+        ],
+    )
+
+    query = client.answer.call_kwargs["query"]
+    assert query.startswith("user: Deployment note: ")
+    assert len(query) == service.MAX_CONTENT_CHARS
