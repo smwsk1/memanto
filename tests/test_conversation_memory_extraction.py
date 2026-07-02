@@ -116,3 +116,23 @@ def test_extract_truncates_overlong_first_message_instead_of_dropping_query():
     query = client.answer.call_kwargs["query"]
     assert query.startswith("user: Deployment note: ")
     assert len(query) == service.MAX_CONTENT_CHARS
+
+
+def test_extract_counts_newline_separators_toward_query_budget():
+    client = FakeClient(
+        '[{"type": "fact", "title": "Budget", "content": "The query stayed within budget.", "confidence": 0.8}]'
+    )
+    service = ConversationMemoryExtractionService(client)
+    first_content = "A" * (service.MAX_CONTENT_CHARS - len("user: ") - 2)
+
+    service.extract(
+        namespace="memanto_agent_test",
+        messages=[
+            {"role": "user", "content": first_content},
+            {"role": "assistant", "content": "ok"},
+        ],
+    )
+
+    query = client.answer.call_kwargs["query"]
+    assert len(query) == service.MAX_CONTENT_CHARS
+    assert query.endswith("\na")
