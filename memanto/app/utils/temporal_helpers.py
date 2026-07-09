@@ -26,7 +26,7 @@ def parse_iso_timestamp(ts_str: str) -> datetime:
 
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
-    return dt
+    return dt.astimezone(timezone.utc)
 
 
 def format_local_time(ts) -> str:
@@ -155,6 +155,9 @@ def parse_relative_time(relative: str) -> str | None:
             try:
                 number = int(parts[1])
                 unit = parts[2]
+
+                if number <= 0:
+                    return None
 
                 if unit in ["day", "days"]:
                     return get_last_n_days(number)
